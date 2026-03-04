@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHP Тэгтерін Жаттау</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #fff;
+            padding: 20px;
+        }
+
+        h1 { margin: 15px 0 5px; font-size: 28px; text-align: center; }
+        .subtitle { opacity: 0.6; font-size: 14px; margin-bottom: 15px; }
+
+        /* Прогресс */
+        .progress-bar {
+            width: 100%; max-width: 650px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px; height: 30px;
+            margin-bottom: 15px; overflow: hidden; position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00c9ff, #92fe9d);
+            border-radius: 20px; transition: width 0.5s ease;
+        }
+        .progress-text {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold; font-size: 14px; color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* Статистика */
+        .stats { display: flex; gap: 15px; margin-bottom: 15px; font-size: 15px; flex-wrap: wrap; justify-content: center; }
+        .stats span { padding: 6px 14px; border-radius: 10px; font-weight: bold; }
+        .stat-correct { background: rgba(0,200,83,0.3); }
+        .stat-wrong { background: rgba(255,82,82,0.3); }
+        .stat-score { background: rgba(255,215,0,0.3); }
+        .stat-total { background: rgba(0,201,255,0.2); }
+
+        /* Режим таңдау */
+        .mode-selector {
+            display: flex; gap: 8px; margin-bottom: 12px;
+            flex-wrap: wrap; justify-content: center;
+        }
+        .mode-btn {
+            padding: 8px 16px; border: 2px solid rgba(255,255,255,0.3);
+            background: transparent; color: #fff; border-radius: 10px;
+            cursor: pointer; font-size: 13px; transition: all 0.3s;
+        }
+        .mode-btn:hover, .mode-btn.active {
+            background: rgba(255,255,255,0.2);
+            border-color: #92fe9d; color: #92fe9d;
+        }
+
+        /* Санат фильтрі */
+        .cat-filter {
+            display: flex; gap: 6px; margin-bottom: 15px;
+            flex-wrap: wrap; justify-content: center; max-width: 750px;
+        }
+        .cat-btn {
+            padding: 5px 12px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05); color: #ccc;
+            border-radius: 8px; cursor: pointer; font-size: 12px; transition: all 0.3s;
+        }
+        .cat-btn:hover, .cat-btn.active {
+            background: rgba(146,254,157,0.2);
+            border-color: #92fe9d; color: #92fe9d;
+        }
+
+        /* Карточка */
+        .card-container {
+            perspective: 1000px; width: 100%;
+            max-width: 650px; height: 300px; margin-bottom: 20px;
+        }
+        .card {
+            width: 100%; height: 100%; position: relative;
+            transform-style: preserve-3d; transition: transform 0.6s ease; cursor: pointer;
+        }
+        .card.flipped { transform: rotateY(180deg); }
+        .card-face {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden; border-radius: 20px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 25px; text-align: center;
+        }
+        .card-front {
+            background: linear-gradient(145deg, #1e1e2f, #2d2d44);
+            border: 2px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+        }
+        .card-back {
+            background: linear-gradient(145deg, #1a3a2a, #2d4a3a);
+            border: 2px solid rgba(0,200,83,0.3);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            transform: rotateY(180deg);
+        }
+        .card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; opacity: 0.5; margin-bottom: 10px; }
+        .card-cat { font-size: 11px; opacity: 0.4; margin-bottom: 8px; }
+        .card-code { font-family: 'Courier New', monospace; font-size: 36px; color: #00c9ff; margin-bottom: 8px; word-break: break-all; }
+        .card-hint { font-size: 12px; opacity: 0.5; margin-top: 10px; }
+        .card-back .card-answer { font-size: 18px; line-height: 1.5; color: #92fe9d; }
+        .card-back .card-example {
+            font-family: 'Courier New', monospace; font-size: 13px;
+            background: rgba(0,0,0,0.3); padding: 10px 15px;
+            border-radius: 8px; margin-top: 12px; color: #ccc; max-width: 100%; overflow-x: auto;
+        }
+
+        /* Батырмалар */
+        .buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
+        .btn {
+            padding: 10px 22px; border: none; border-radius: 12px;
+            font-size: 15px; font-weight: bold; cursor: pointer;
+            transition: all 0.3s; color: #fff;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-flip { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .btn-know { background: linear-gradient(135deg, #00c853, #64dd17); }
+        .btn-dunno { background: linear-gradient(135deg, #ff5252, #f44336); }
+        .btn-next { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .btn-restart { background: linear-gradient(135deg, #ffd54f, #ff6f00); color: #333; }
+        .btn-shuffle { background: linear-gradient(135deg, #a18cd1, #fbc2eb); color: #333; }
+
+        /* Тест режимі */
+        .quiz-options {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 10px; max-width: 650px; width: 100%; margin-bottom: 12px;
+        }
+        .quiz-option {
+            padding: 14px; border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 12px; background: rgba(255,255,255,0.05);
+            color: #fff; font-size: 14px; cursor: pointer;
+            transition: all 0.3s; text-align: center;
+        }
+        .quiz-option:hover { background: rgba(255,255,255,0.15); border-color: #00c9ff; }
+        .quiz-option.correct { background: rgba(0,200,83,0.3); border-color: #00c853; }
+        .quiz-option.wrong { background: rgba(255,82,82,0.3); border-color: #ff5252; }
+
+        /* Жазу режимі */
+        .quiz-input {
+            width: 100%; max-width: 500px; padding: 14px;
+            border-radius: 12px; border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05); color: #fff;
+            font-size: 17px; text-align: center; margin-bottom: 12px; outline: none;
+        }
+        .quiz-input:focus { border-color: #00c9ff; }
+
+        .feedback { font-size: 16px; margin: 8px 0; min-height: 25px; text-align: center; }
+
+        /* Нәтиже */
+        .result-screen { text-align: center; padding: 30px; }
+        .result-screen h2 { font-size: 32px; margin-bottom: 15px; }
+        .result-screen .emoji { font-size: 70px; margin-bottom: 15px; }
+
+        .hidden { display: none !important; }
+
+        /* Кесте */
+        .table-wrap { width: 100%; max-width: 800px; overflow-x: auto; margin-top: 10px; }
+        .ref-table { width: 100%; border-collapse: collapse; }
+        .ref-table th, .ref-table td {
+            padding: 10px 12px; border: 1px solid rgba(255,255,255,0.1);
+            text-align: left; font-size: 13px;
+        }
+        .ref-table th { background: rgba(255,255,255,0.1); position: sticky; top: 0; }
+        .ref-table code { color: #00c9ff; font-family: 'Courier New', monospace; }
+        .cat-header td {
+            background: rgba(146,254,157,0.15); font-weight: bold;
+            font-size: 15px; color: #92fe9d; padding: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .card-code { font-size: 26px; }
+            .card-container { height: 260px; }
+            .quiz-options { grid-template-columns: 1fr; }
+            h1 { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>🐘 PHP Тэгтерін Жаттау</h1>
+<div class="subtitle" id="cardCountText">Барлығы: 100 карточка</div>
+
+<!-- Режим -->
+<div class="mode-selector">
+    <button class="mode-btn active" onclick="setMode('flashcard')">📇 Карточка</button>
+    <button class="mode-btn" onclick="setMode('quiz')">🧠 Тест (4 нұсқа)</button>
+    <button class="mode-btn" onclick="setMode('type')">⌨️ Жазып жауап</button>
+    <button class="mode-btn" onclick="setMode('table')">📋 Толық кесте</button>
+</div>
+
+<!-- Санат фильтрі -->
+<div class="cat-filter" id="catFilter"></div>
+
+<!-- Прогресс -->
+<div class="progress-bar" id="progressBar">
+    <div class="progress-fill" id="progressFill"></div>
+    <div class="progress-text" id="progressText">1 / 100</div>
+</div>
+
+<!-- Статистика -->
+<div class="stats" id="stats">
+    <span class="stat-correct">✅ <span id="correctCount">0</span></span>
+    <span class="stat-wrong">❌ <span id="wrongCount">0</span></span>
+    <span class="stat-score">⭐ <span id="scorePercent">0</span>%</span>
+    <span class="stat-total">📚 <span id="totalCards">100</span></span>
+</div>
+
+<!-- FLASHCARD -->
+<div id="flashcardMode">
+    <div class="card-container">
+        <div class="card" id="card" onclick="flipCard()">
+            <div class="card-face card-front">
+                <div class="card-cat" id="frontCat"></div>
+                <div class="card-label">Бұл не?</div>
+                <div class="card-code" id="frontCode"></div>
+                <div class="card-hint">👆 Аудару үшін бас</div>
+            </div>
+            <div class="card-face card-back">
+                <div class="card-label">Жауабы</div>
+                <div class="card-answer" id="backAnswer"></div>
+                <div class="card-example" id="backExample"></div>
+            </div>
+        </div>
+    </div>
+    <div class="buttons">
+        <button class="btn btn-dunno" onclick="markCard(false)">❌ Білмедім</button>
+        <button class="btn btn-flip" onclick="flipCard()">🔄 Аудару</button>
+        <button class="btn btn-know" onclick="markCard(true)">✅ Білдім</button>
+    </div>
+</div>
+
+<!-- QUIZ -->
+<div id="quizMode" class="hidden">
+    <div class="card-container" style="height:auto;min-height:100px;margin-bottom:12px;">
+        <div class="card-face card-front" style="position:relative;border-radius:20px;padding:25px;">
+            <div class="card-cat" id="quizCat"></div>
+            <div class="card-label">Бұл не?</div>
+            <div class="card-code" id="quizQuestion"></div>
+        </div>
+    </div>
+    <div class="quiz-options" id="quizOptions"></div>
+    <div class="feedback" id="quizFeedback"></div>
+    <div class="buttons">
+        <button class="btn btn-next hidden" id="quizNextBtn" onclick="nextQuiz()">Келесі ➡️</button>
+    </div>
+</div>
+
+<!-- TYPE -->
+<div id="typeMode" class="hidden">
+    <div class="card-container" style="height:auto;min-height:100px;margin-bottom:12px;">
+        <div class="card-face card-front" style="position:relative;border-radius:20px;padding:25px;">
+            <div class="card-cat" id="typeCat"></div>
+            <div class="card-label">Бұл не?</div>
+            <div class="card-code" id="typeQuestion"></div>
+        </div>
+    </div>
+    <input class="quiz-input" id="typeInput" placeholder="Жауабыңды жаз..." onkeydown="if(event.key==='Enter') checkType()">
+    <div class="feedback" id="typeFeedback"></div>
+    <div class="buttons">
+        <button class="btn btn-flip" onclick="checkType()">✅ Тексеру</button>
+        <button class="btn btn-next hidden" id="typeNextBtn" onclick="nextType()">Келесі ➡️</button>
+    </div>
+</div>
+
+<!-- НӘТИЖЕ -->
+<div id="resultScreen" class="hidden result-screen">
+    <div class="emoji" id="resultEmoji">🎉</div>
+    <h2 id="resultTitle">Жарайсың!</h2>
+    <p id="resultText" style="font-size:18px;margin-bottom:15px;"></p>
+    <div class="buttons">
+        <button class="btn btn-restart" onclick="restart()">🔄 Қайта бастау</button>
+        <button class="btn btn-shuffle" onclick="shuffleAndRestart()">🔀 Араластырып бастау</button>
+    </div>
+</div>
+
+<!-- Қосымша батырмалар -->
+<div class="buttons" style="margin-top:8px;" id="extraButtons">
+    <button class="btn btn-shuffle" onclick="shuffleAndRestart()">🔀 Араластыру</button>
+    <button class="btn btn-restart" onclick="restart()">🔄 Басынан</button>
+</div>
+
+<!-- КЕСТЕ -->
+<div id="tableMode" class="hidden">
+    <div class="table-wrap">
+        <table class="ref-table" id="refTable">
+            <thead><tr><th>№</th><th>Тэг</th><th>Санат</th><th>Түсіндірме</th><th>Мысал</th></tr></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+const allCards = [
+    // ===== 1. НЕГІЗГІ СИНТАКСИС (15) =====
+    { code:"&lt;?php ?&gt;", answer:"PHP кодының БАСЫ мен СОҢЫ", example:"&lt;?php echo 'сәлем'; ?&gt;", cat:"📝 Синтаксис", keywords:["php","баста","соңы","тэг","код","ашу","жабу"] },
+    { code:"//", answer:"Бір жолдық комментарий — компьютер оқымайды", example:"// бұл комментарий", cat:"📝 Синтаксис", keywords:["комментарий","түсініктеме","жол"] },
+    { code:"/* */", answer:"Көп жолдық комментарий блогы", example:"/* бұл\nкөп жолдық */", cat:"📝 Синтаксис", keywords:["комментарий","көп","блок"] },
+    { code:"#", answer:"Бір жолдық комментарий (// сияқты)", example:"# комментарий", cat:"📝 Синтаксис", keywords:["комментарий","решетка","хэш"] },
+    { code:"$", answer:"Айнымалы белгісі — барлық айнымалы $ белгісінен басталады", example:"$name = 'Алмас';", cat:"📝 Синтаксис", keywords:["айнымалы","белгі","variable","доллар"] },
+    { code:"=", answer:"Меншіктеу операторы — мәнді айнымалыға САҚТАЙДЫ", example:"$x = 5;", cat:"📝 Синтаксис", keywords:["меншіктеу","сақтау","тең","оператор"] },
+    { code:";", answer:"Команда соңы — әр жолдың соңына қойылады", example:"echo 'сәлем';", cat:"📝 Синтаксис", keywords:["соңы","нүктелі","үтір","аяқтау","команда"] },
+    { code:"echo", answer:"Экранға шығару командасы — мәтін/мән шығарады", example:"echo 'Сәлем әлем';", cat:"📝 Синтаксис", keywords:["экран","шығару","жазу","көрсету","басу","echo"] },
+    { code:"print", answer:"echo сияқты экранға шығарады, бірақ 1 мән қайтарады", example:"print('Сәлем');", cat:"📝 Синтаксис", keywords:["шығару","print","басу"] },
+    { code:"' '  немесе  \" \"", answer:"Жол (string) — мәтін деректер типі", example:"'сәлем'  немесе  \"сәлем\"", cat:"📝 Синтаксис", keywords:["жол","string","мәтін","тырнақша"] },
+    { code:".", answer:"Конкатенация — жолдарды БІРІКТІРУ операторы", example:"echo 'a' . 'b'; // ab", cat:"📝 Синтаксис", keywords:["біріктіру","конкатенация","жалғау","нүкте"] },
+    { code:".=", answer:"Жолға ҚОСЫП жазу операторы", example:"$s = 'a'; $s .= 'b'; // ab", cat:"📝 Синтаксис", keywords:["қосу","жалғау","біріктіру","тең"] },
+    { code:"PHP_EOL", answer:"End Of Line — жаңа жолға көшу белгісі", example:"echo 'сәлем' . PHP_EOL;", cat:"📝 Синтаксис", keywords:["жаңа жол","көшу","end of line","eol"] },
+    { code:"\\n", answer:"Жаңа жолға көшу (қос тырнақша ішінде)", example:"echo \"сәлем\\nәлем\";", cat:"📝 Синтаксис", keywords:["жаңа жол","көшу","бэкслеш"] },
+    { code:"\\t", answer:"Табуляция белгісі — шегініс жасайды", example:"echo \"ат\\tжасы\";", cat:"📝 Синтаксис", keywords:["табуляция","шегініс","tab"] },
+
+    // ===== 2. ДЕРЕКТЕР ТИПТЕРІ (10) =====
+    { code:"string", answer:"Жол типі — мәтін деректер", example:"$s = 'сәлем'; // string", cat:"🔤 Деректер типі", keywords:["жол","мәтін","string","тип"] },
+    { code:"int / integer", answer:"Бүтін сан типі", example:"$x = 42; // integer", cat:"🔤 Деректер типі", keywords:["бүтін","сан","int","integer"] },
+    { code:"float / double", answer:"Ондық (нақты) сан типі", example:"$pi = 3.14; // float", cat:"🔤 Деректер типі", keywords:["ондық","нақты","float","double","бөлшек"] },
+    { code:"bool / boolean", answer:"Логикалық тип — true (ақиқат) немесе false (жалған)", example:"$ok = true;", cat:"🔤 Деректер типі", keywords:["логика","bool","boolean","ақиқат","жалған"] },
+    { code:"array", answer:"Массив типі — бірнеше мәнді сақтайды", example:"$arr = [1, 2, 3];", cat:"🔤 Деректер типі", keywords:["массив","array","жиым","тізім"] },
+    { code:"null", answer:"Бос мән — айнымалыда ештеңе жоқ", example:"$x = null;", cat:"🔤 Деректер типі", keywords:["бос","null","жоқ","ештеңе"] },
+    { code:"(int)", answer:"Типті int-ке түрлендіру (type casting)", example:"$x = (int)'42'; // 42", cat:"🔤 Деректер типі", keywords:["түрлендіру","casting","int","тип"] },
+    { code:"(string)", answer:"Типті string-ке түрлендіру", example:"$s = (string)42; // '42'", cat:"🔤 Деректер типі", keywords:["түрлендіру","casting","string"] },
+    { code:"(float)", answer:"Типті float-қа түрлендіру", example:"$f = (float)'3.14';", cat:"🔤 Деректер типі", keywords:["түрлендіру","casting","float"] },
+    { code:"(bool)", answer:"Типті boolean-ға түрлендіру", example:"$b = (bool)1; // true", cat:"🔤 Деректер типі", keywords:["түрлендіру","casting","bool"] },
+
+    // ===== 3. АРИФМЕТИКА & ОПЕРАТОРЛАР (14) =====
+    { code:"+", answer:"Қосу операторы", example:"echo 2 + 3; // 5", cat:"🔢 Операторлар", keywords:["қосу","арифметика","плюс"] },
+    { code:"-", answer:"Азайту операторы", example:"echo 5 - 2; // 3", cat:"🔢 Операторлар", keywords:["азайту","минус","алу"] },
+    { code:"*", answer:"Көбейту операторы", example:"echo 2 * 5; // 10", cat:"🔢 Операторлар", keywords:["көбейту","multiplication"] },
+    { code:"/", answer:"Бөлу операторы", example:"echo 10 / 2; // 5", cat:"🔢 Операторлар", keywords:["бөлу","division"] },
+    { code:"%", answer:"Қалдық (модуль) операторы — бөлгендегі қалдық", example:"echo 10 % 3; // 1", cat:"🔢 Операторлар", keywords:["қалдық","модуль","modulus","бөлгіш"] },
+    { code:"**", answer:"Дәрежеге шығару операторы", example:"echo 2 ** 3; // 8", cat:"🔢 Операторлар", keywords:["дәреже","степень","power"] },
+    { code:"( )", answer:"Жақшалар — амалдардың орындалу РЕТІН анықтайды", example:"(2 + 3) * 4 = 20", cat:"🔢 Операторлар", keywords:["жақша","рет","бірінші","приоритет"] },
+    { code:"==", answer:"Теңдік салыстыру (тип тексермейді)", example:"5 == '5' // true", cat:"🔢 Операторлар", keywords:["теңдік","салыстыру","тең","equal"] },
+    { code:"===", answer:"Қатаң теңдік (тип + мәнді тексереді)", example:"5 === '5' // false", cat:"🔢 Операторлар", keywords:["қатаң","теңдік","strict","тип"] },
+    { code:"!=", answer:"Тең емес (салыстыру)", example:"5 != 3 // true", cat:"🔢 Операторлар", keywords:["тең емес","салыстыру","not equal"] },
+    { code:"!==", answer:"Қатаң тең емес (тип + мән)", example:"5 !== '5' // true", cat:"🔢 Операторлар", keywords:["қатаң","тең емес","strict"] },
+    { code:"> < >= <=", answer:"Салыстыру операторлары: үлкен, кіші, үлкен-тең, кіші-тең", example:"5 > 3 // true", cat:"🔢 Операторлар", keywords:["салыстыру","үлкен","кіші","тең"] },
+    { code:"$i++", answer:"Инкремент — мәнді 1-ге АРТТЫРАДЫ", example:"$i = 5; $i++; // 6", cat:"🔢 Операторлар", keywords:["инкремент","арттыру","плюс плюс","1"] },
+    { code:"$i--", answer:"Декремент — мәнді 1-ге КЕМІТЕДІ", example:"$i = 5; $i--; // 4", cat:"🔢 Операторлар", keywords:["декремент","кемітеді","минус минус","1"] },
+
+    // ===== 4. ЛОГИКАЛЫҚ ОПЕРАТОРЛАР (6) =====
+    { code:"&&  немесе  and", answer:"Логикалық ЖӘНЕ — екеуі де true болса ғана true", example:"if ($a > 0 && $b > 0)", cat:"🧠 Логика", keywords:["және","and","логика","екеуі"] },
+    { code:"||  немесе  or", answer:"Логикалық НЕМЕСЕ — кем дегенде біреуі true болса true", example:"if ($a > 0 || $b > 0)", cat:"🧠 Логика", keywords:["немесе","or","логика","біреуі"] },
+    { code:"!", answer:"Логикалық ТЕРІСТЕУ — true→false, false→true", example:"if (!$found)", cat:"🧠 Логика", keywords:["терістеу","жоқ","not","кері"] },
+    { code:"true", answer:"Ақиқат — логикалық иә мәні", example:"$ok = true;", cat:"🧠 Логика", keywords:["ақиқат","true","иә","дұрыс"] },
+    { code:"false", answer:"Жалған — логикалық жоқ мәні", example:"$ok = false;", cat:"🧠 Логика", keywords:["жалған","false","жоқ","қате"] },
+    { code:"?:", answer:"Тернарлық оператор — қысқа if/else", example:"$r = ($a>0) ? 'иә' : 'жоқ';", cat:"🧠 Логика", keywords:["тернарлық","қысқа","шарт","if"] },
+
+    // ===== 5. ШАРТТАР & ЦИКЛДЕР (12) =====
+    { code:"if", answer:"Шарт тексеру — шарт true болса код орындалады", example:"if ($x > 0) { echo 'оң'; }", cat:"🔀 Шарт/Цикл", keywords:["шарт","if","тексеру","егер"] },
+    { code:"else", answer:"if шарты false болса орындалатын блок", example:"else { echo 'теріс'; }", cat:"🔀 Шарт/Цикл", keywords:["else","басқаша","әйтпесе","жалған"] },
+    { code:"elseif", answer:"Қосымша шарт тексеру (if-тен кейін)", example:"elseif ($x == 0) { ... }", cat:"🔀 Шарт/Цикл", keywords:["elseif","қосымша","шарт","тексеру"] },
+    { code:"switch", answer:"Көп нұсқалы шарт тексеру (if/elseif орнына)", example:"switch($x) { case 1: ... }", cat:"🔀 Шарт/Цикл", keywords:["switch","нұсқа","таңдау","case"] },
+    { code:"case / break", answer:"switch ішіндегі нұсқа және тоқтату", example:"case 'a': echo 'а'; break;", cat:"🔀 Шарт/Цикл", keywords:["case","break","нұсқа","тоқтату"] },
+    { code:"default", answer:"switch-те ешбір case сәйкес келмесе орындалады", example:"default: echo 'белгісіз';", cat:"🔀 Шарт/Цикл", keywords:["default","әдепкі","басқа","ешбір"] },
+    { code:"for", answer:"Санақтағыш циклі — белгілі рет қайталайды", example:"for ($i=0; $i<10; $i++) { }", cat:"🔀 Шарт/Цикл", keywords:["for","цикл","қайталау","санақ"] },
+    { code:"foreach", answer:"Массив элементтерін БІРІНЕН-БІРІН өту циклі", example:"foreach ($arr as $val) { }", cat:"🔀 Шарт/Цикл", keywords:["foreach","массив","элемент","өту","бірінен"] },
+    { code:"while", answer:"Шарт true болғанша қайталайтын цикл", example:"while ($i < 10) { $i++; }", cat:"🔀 Шарт/Цикл", keywords:["while","шарт","қайталау","цикл"] },
+    { code:"do...while", answer:"Алдымен 1 рет орындап, содан кейін шартты тексереді", example:"do { $i++; } while ($i<10);", cat:"🔀 Шарт/Цикл", keywords:["do","while","алдымен","кемінде","1 рет"] },
+    { code:"break", answer:"Циклді ТОҚТАТЫП шығу", example:"if ($x==5) break;", cat:"🔀 Шарт/Цикл", keywords:["тоқтату","шығу","break","цикл"] },
+    { code:"continue", answer:"Циклдің қалған бөлігін ӨТКІЗІП, келесіге көшу", example:"if ($x==3) continue;", cat:"🔀 Шарт/Цикл", keywords:["continue","өткізу","келесі","көшу"] },
+
+    // ===== 6. МАССИВТЕР (12) =====
+    { code:"[ ]", answer:"Массив құру — бірнеше мәнді бір айнымалыда сақтайды", example:"$arr = ['a', 'b', 'c'];", cat:"📦 Массив", keywords:["массив","array","жиым","құру"] },
+    { code:"array()", answer:"Массив құрудың ескі жазылуы", example:"$arr = array(1, 2, 3);", cat:"📦 Массив", keywords:["массив","array","құру","ескі"] },
+    { code:"$arr[0]", answer:"Индекс арқылы элементке қол жеткізу (0-ден басталады)", example:"echo $arr[0]; // бірінші", cat:"📦 Массив", keywords:["индекс","элемент","нөмір","қол жеткізу","0"] },
+    { code:"$arr[]", answer:"Массив СОҢЫНА жаңа элемент қосу", example:"$arr[] = 'жаңа';", cat:"📦 Массив", keywords:["соңына","қосу","элемент","жаңа"] },
+    { code:"$arr['key']", answer:"Ассоциативті кілт — сөз арқылы элементке қол жеткізу", example:"$arr['name'] = 'Алмас';", cat:"📦 Массив", keywords:["ассоциативті","кілт","key","сөз"] },
+    { code:"=>", answer:"Кілт => мән жұбын анықтау (массивте)", example:"['name' => 'Ali', 'age' => 20]", cat:"📦 Массив", keywords:["кілт","мән","жұп","arrow","стрелка"] },
+    { code:"count()", answer:"Массивтегі элементтер САНЫН қайтарады", example:"count([1,2,3]); // 3", cat:"📦 Массив", keywords:["сан","санау","count","неше"] },
+    { code:"array_push()", answer:"Массив соңына элемент(тер) қосу функциясы", example:"array_push($arr, 'жаңа');", cat:"📦 Массив", keywords:["соңына","қосу","push","элемент"] },
+    { code:"array_pop()", answer:"Массивтың СОҢҒЫ элементін алып тастайды", example:"array_pop($arr);", cat:"📦 Массив", keywords:["соңғы","алу","тастау","pop"] },
+    { code:"array_merge()", answer:"Екі немесе одан көп массивті БІРІКТІРУ", example:"array_merge($a, $b);", cat:"📦 Массив", keywords:["біріктіру","merge","қосу","екі"] },
+    { code:"array_reverse()", answer:"Массив элементтерін КЕРІ ретпен қайтарады", example:"array_reverse([1,2,3]); // [3,2,1]", cat:"📦 Массив", keywords:["кері","reverse","қайтару","рет"] },
+    { code:"in_array()", answer:"Массивте элемент БАР МА тексереді", example:"in_array('a', $arr); // true/false", cat:"📦 Массив", keywords:["бар","тексеру","іздеу","in_array"] },
+
+    // ===== 7. ЖОЛ ФУНКЦИЯЛАРЫ (12) =====
+    { code:"strlen()", answer:"Жолдың ҰЗЫНДЫҒЫН (символ санын) қайтарады", example:"strlen('сәлем'); // 5", cat:"🔤 Жол функция", keywords:["ұзындық","сан","strlen","символ","неше"] },
+    { code:"strtolower()", answer:"Барлық әріптерді КІШІ әріпке түрлендіреді", example:"strtolower('ABC'); // 'abc'", cat:"🔤 Жол функция", keywords:["кіші","lower","түрлендіру","әріп"] },
+    { code:"strtoupper()", answer:"Барлық әріптерді БАҚАС (үлкен) әріпке түрлендіреді", example:"strtoupper('abc'); // 'ABC'", cat:"🔤 Жол функция", keywords:["үлкен","upper","бас","түрлендіру","әріп"] },
+    { code:"substr()", answer:"Жолдың бір БӨЛІГІН кесіп алу", example:"substr('сәлем', 0, 3); // 'сәл'", cat:"🔤 Жол функция", keywords:["бөлік","кесу","substr","алу"] },
+    { code:"str_replace()", answer:"Жолдағы мәтінді АУЫСТЫРУ", example:"str_replace('a','b','abc'); // 'bbc'", cat:"🔤 Жол функция", keywords:["ауыстыру","replace","алмастыру"] },
+    { code:"strpos()", answer:"Жолдан ішкі жолдың ПОЗИЦИЯСЫН табады", example:"strpos('hello','lo'); // 3", cat:"🔤 Жол функция", keywords:["позиция","табу","іздеу","strpos","орын"] },
+    { code:"trim()", answer:"Жолдың басы мен соңындағы БОСТАРДЫ алу", example:"trim('  сәлем  '); // 'сәлем'", example:"trim(' hi '); // 'hi'", cat:"🔤 Жол функция", keywords:["бос","trim","тазалау","кеңістік"] },
+    { code:"explode()", answer:"Жолды бөлгіш арқылы МАССИВКЕ бөлу", example:"explode(',','a,b,c'); // ['a','b','c']", cat:"🔤 Жол функция", keywords:["бөлу","explode","массив","жол"] },
+    { code:"implode()", answer:"Массивті жолға БІРІКТІРУ (explode кері)", example:"implode('-', ['a','b']); // 'a-b'", cat:"🔤 Жол функция", keywords:["біріктіру","implode","жол","массив"] },
+    { code:"nl2br()", answer:"\\n жаңа жол белгісін HTML <br> тэгіне айналдырады", example:"nl2br(\"a\\nb\"); // a<br>b", cat:"🔤 Жол функция", keywords:["жаңа жол","br","html","nl2br"] },
+    { code:"str_contains()", answer:"Жолда ішкі жол БАР МА тексереді (PHP 8+)", example:"str_contains('hello','ell'); // true", cat:"🔤 Жол функция", keywords:["бар","contains","тексеру","іздеу"] },
+    { code:"mb_strlen()", answer:"Мультибайт жолдың ұзындығы (кириллица үшін)", example:"mb_strlen('сәлем'); // 5", cat:"🔤 Жол функция", keywords:["мультибайт","кириллица","ұзындық","mb"] },
+
+    // ===== 8. ФУНКЦИЯЛАР (8) =====
+    { code:"function", answer:"Өз функцияңды АНЫҚТАУ кілт сөзі", example:"function sum($a,$b) { return $a+$b; }", cat:"⚙️ Функция", keywords:["функция","анықтау","жасау","function"] },
+    { code:"return", answer:"Функциядан мәнді ҚАЙТАРУ", example:"return $result;", cat:"⚙️ Функция", keywords:["қайтару","return","мән","нәтиже"] },
+    { code:"параметр", answer:"Функцияға берілетін кіріс мәндері", example:"function hi($name) { ... }", cat:"⚙️ Функция", keywords:["параметр","кіріс","аргумент","мән"] },
+    { code:"= (параметрде)", answer:"Параметрге ӘДЕПКІ мән беру", example:"function hi($name='Қонақ') { }", cat:"⚙️ Функция", keywords:["әдепкі","default","мән","параметр"] },
+    { code:"global", answer:"Функция ішінде сыртқы айнымалыны қолдану", example:"global $x; echo $x;", cat:"⚙️ Функция", keywords:["global","сыртқы","айнымалы","ішінде"] },
+    { code:"static", answer:"Функция ішінде мәнді САҚТАП қалатын айнымалы", example:"static $count = 0; $count++;", cat:"⚙️ Функция", keywords:["static","сақтау","есте","айнымалы"] },
+    { code:"isset()", answer:"Айнымалы АНЫҚТАЛҒАН БА тексереді (null емес)", example:"isset($x); // true/false", cat:"⚙️ Функция", keywords:["анықталған","isset","бар","тексеру","null"] },
+    { code:"empty()", answer:"Айнымалы БОС ПА тексереді (0, '', null, false, [])", example:"empty($x); // true/false", cat:"⚙️ Функция", keywords:["бос","empty","тексеру","жоқ"] },
+
+    // ===== 9. СЕАНС & СУПЕРГЛОБАЛДАР (14) =====
+    { code:"session_start()", answer:"Сеансты (сессияны) БАСТАУ — $_SESSION қолдану үшін керек", example:"session_start();", cat:"🔐 Сеанс", keywords:["сеанс","сессия","бастау","session","start"] },
+    { code:"$_SESSION", answer:"Сеанс деректерін сақтайтын суперглобал массив", example:"$_SESSION['user'] = 'Ali';", cat:"🔐 Сеанс", keywords:["session","сеанс","сақтау","деректер"] },
+    { code:"session_destroy()", answer:"Сеансты ЖОЮ — барлық сеанс деректері жойылады", example:"session_destroy();", cat:"🔐 Сеанс", keywords:["жою","destroy","сеанс","шығу","logout"] },
+    { code:"$_POST", answer:"POST әдісімен жіберілген форма деректері", example:"$name = $_POST['name'];", cat:"🔐 Сеанс", keywords:["post","форма","жіберу","деректер"] },
+    { code:"$_GET", answer:"URL арқылы (GET) жіберілген деректер", example:"$id = $_GET['id'];", cat:"🔐 Сеанс", keywords:["get","url","параметр","деректер"] },
+    { code:"$_REQUEST", answer:"$_GET + $_POST + $_COOKIE біріктірген суперглобал", example:"$val = $_REQUEST['key'];", cat:"🔐 Сеанс", keywords:["request","get","post","біріктіру"] },
+    { code:"$_SERVER", answer:"Сервер және орындалу ортасы туралы ақпарат", example:"$_SERVER['REQUEST_METHOD']", cat:"🔐 Сеанс", keywords:["server","сервер","орта","ақпарат","method"] },
+    { code:"$_COOKIE", answer:"Клиент cookie деректері", example:"$_COOKIE['theme']", cat:"🔐 Сеанс", keywords:["cookie","куки","клиент","браузер"] },
+    { code:"setcookie()", answer:"Cookie ОРНАТУ функциясы", example:"setcookie('theme','dark',time()+3600);", cat:"🔐 Сеанс", keywords:["cookie","орнату","setcookie","браузер"] },
+    { code:"header()", answer:"HTTP тақырыбын жіберу — бағыттау (redirect) үшін жиі қолданылады", example:"header('Location: index.php');", cat:"🔐 Сеанс", keywords:["header","бағыттау","redirect","жіберу"] },
+    { code:"exit()", answer:"Скрипт орындалуын ТОҚТАТУ", example:"exit(); // немесе die();", cat:"🔐 Сеанс", keywords:["тоқтату","exit","die","аяқтау","скрипт"] },
+    { code:"die()", answer:"exit() сияқты — скриптті тоқтатады, хабар шығара алады", example:"die('Қате болды!');", cat:"🔐 Сеанс", keywords:["тоқтату","die","exit","қате"] },
+    { code:"time()", answer:"Ағымдағы уақытты UNIX timestamp ретінде қайтарады", example:"echo time(); // 1717171717", cat:"🔐 Сеанс", keywords:["уақыт","time","timestamp","unix","секунд"] },
+    { code:"date()", answer:"Күн/уақыт функциясы — форматталған күн шығарады", example:"date('Y-m-d'); // 2025-06-15", cat:"🔐 Сеанс", keywords:["күн","уақыт","date","жыл","ай","формат"] },
+
+    // ===== 10. ФАЙЛДАРМЕН ЖҰМЫС (10) =====
+    { code:"file_put_contents()", answer:"Файлға мәтін ЖАЗУ функциясы", example:"file_put_contents('f.txt','мәтін');", cat:"📁 Файл", keywords:["файл","жазу","put","сақтау","contents"] },
+    { code:"FILE_APPEND", answer:"file_put_contents ішінде — файл СОҢЫНА қосып жазу жалаушасы", example:"file_put_contents('f.txt',$s,FILE_APPEND);", cat:"📁 Файл", keywords:["соңына","қосу","append","жалауша","flag"] },
+    { code:"file_get_contents()", answer:"Файлдың БАРЛЫҚ мәтінін оқып алу", example:"$text = file_get_contents('f.txt');", cat:"📁 Файл", keywords:["файл","оқу","get","барлық","мәтін"] },
+    { code:"file()", answer:"Файлды жол-жол МАССИВ ретінде оқу", example:"$lines = file('f.txt');", cat:"📁 Файл", keywords:["файл","массив","жол","оқу","array"] },
+    { code:"file_exists()", answer:"Файл БАР МА тексереді", example:"if (file_exists('f.txt')) { ... }", cat:"📁 Файл", keywords:["файл","бар","тексеру","exists"] },
+    { code:"unlink()", answer:"Файлды ЖОЮ функциясы", example:"unlink('f.txt');", cat:"📁 Файл", keywords:["жою","өшіру","файл","unlink","delete"] },
+    { code:"fopen()", answer:"Файлды АШУ — оқу/жазу режимімен", example:"$f = fopen('f.txt', 'r');", cat:"📁 Файл", keywords:["ашу","файл","fopen","режим"] },
+    { code:"fwrite()", answer:"Ашық файлға ЖАЗУ", example:"fwrite($f, 'мәтін');", cat:"📁 Файл", keywords:["жазу","файл","fwrite","ашық"] },
+    { code:"fclose()", answer:"Ашық файлды ЖАБУ", example:"fclose($f);", cat:"📁 Файл", keywords:["жабу","файл","fclose","ашық"] },
+    { code:"fgets()", answer:"Ашық файлдан бір ЖОЛ оқу", example:"$line = fgets($f);", cat:"📁 Файл", keywords:["жол","оқу","файл","fgets","бір"] },
+
+    // ===== 11. ШЫҒАРУ & DEBUG (6) =====
+    { code:"print_r()", answer:"Массивті оқуға ыңғайлы ТОЛЫҚ көрсету", example:"print_r($arr);", cat:"🖥 Шығару", keywords:["массив","толық","көрсету","print_r","debug"] },
+    { code:"var_dump()", answer:"Айнымалының ТИП + МӘН + ӨЛШЕМІН көрсетеді", example:"var_dump($x); // int(5)", cat:"🖥 Шығару", keywords:["тип","мән","var_dump","debug","өлшем"] },
+    { code:"var_export()", answer:"PHP код ретінде шығарады (copy-paste үшін)", example:"var_export(['a','b']); // array(...)", cat:"🖥 Шығару", keywords:["export","код","шығару","php"] },
+    { code:"gettype()", answer:"Айнымалының ТИПІН жол ретінде қайтарады", example:"gettype(42); // 'integer'", cat:"🖥 Шығару", keywords:["тип","gettype","анықтау","type"] },
+    { code:"is_array()", answer:"Айнымалы МАССИВ ПА тексереді", example:"is_array($arr); // true", cat:"🖥 Шығару", keywords:["массив","тексеру","is_array","тип"] },
+    { code:"is_string()", answer:"Айнымалы ЖОЛ ПА тексереді", example:"is_string('hi'); // true", cat:"🖥 Шығару", keywords:["жол","тексеру","is_string","тип"] },
+
+    // ===== 12. МАТЕМАТИКА (8) =====
+    { code:"abs()", answer:"Санның АБСОЛЮТТІК мәнін қайтарады (теріс→оң)", example:"abs(-5); // 5", cat:"🔢 Математика", keywords:["абсолют","abs","теріс","оң","модуль"] },
+    { code:"round()", answer:"Санды ДӨҢГЕЛЕКТЕУ", example:"round(3.7); // 4", cat:"🔢 Математика", keywords:["дөңгелектеу","round","жуық"] },
+    { code:"ceil()", answer:"Санды ЖОҒАРЫҒА дөңгелектеу", example:"ceil(3.1); // 4", cat:"🔢 Математика", keywords:["жоғары","ceil","дөңгелектеу","үлкен"] },
+    { code:"floor()", answer:"Санды ТӨМЕНГЕ дөңгелектеу", example:"floor(3.9); // 3", cat:"🔢 Математика", keywords:["төмен","floor","дөңгелектеу","кіші"] },
+    { code:"max()", answer:"Ең ҮЛКЕН мәнді қайтарады", example:"max(3, 7, 2); // 7", cat:"🔢 Математика", keywords:["үлкен","max","ең","максимум"] },
+    { code:"min()", answer:"Ең КІШІ мәнді қайтарады", example:"min(3, 7, 2); // 2", cat:"🔢 Математика", keywords:["кіші","min","ең","минимум"] },
+    { code:"rand()", answer:"Кездейсоқ сан генерациялау", example:"rand(1, 100); // 1-100 аралығында", cat:"🔢 Математика", keywords:["кездейсоқ","rand","random","сан"] },
+    { code:"sqrt()", answer:"Санның КВАДРАТ ТҮБІРІН табу", example:"sqrt(16); // 4", cat:"🔢 Математика", keywords:["квадрат","түбір","sqrt","тамыр"] },
+
+    // ===== 13. ҚОСЫМША МАҢЫЗДЫ (9) =====
+    { code:"htmlspecialchars()", answer:"HTML арнайы символдарын қауіпсіз мәтінге түрлендіреді (XSS қорғау)", example:"htmlspecialchars('<script>');", cat:"🛡 Қосымша", keywords:["html","қорғау","xss","арнайы","қауіпсіз","htmlspecialchars"] },
+    { code:"include", answer:"Басқа PHP файлды ҚОСУ (қате болса ескерту)", example:"include 'header.php';", cat:"🛡 Қосымша", keywords:["include","қосу","файл","кірістіру"] },
+    { code:"require", answer:"Басқа PHP файлды ҚОСУ (қате болса тоқтайды)", example:"require 'config.php';", cat:"🛡 Қосымша", keywords:["require","қосу","файл","міндетті"] },
+    { code:"include_once", answer:"Файлды тек 1 РЕТ қосу (қайталанбайды)", example:"include_once 'funcs.php';", cat:"🛡 Қосымша", keywords:["include","once","бір рет","қайталанбау"] },
+    { code:"list()", answer:"Массив мәндерін бірден бірнеше айнымалыға меншіктеу", example:"list($a,$b) = [1, 2];", cat:"🛡 Қосымша", keywords:["list","массив","меншіктеу","бірнеше"] },
+    { code:"compact()", answer:"Айнымалылардан ассоциативті массив құру", example:"compact('name','age'); // ['name'=>...,'age'=>...]", cat:"🛡 Қосымша", keywords:["compact","массив","айнымалы","ассоциатив"] },
+    { code:"extract()", answer:"Ассоциативті массивтан айнымалылар жасау", example:"extract(['name'=>'Ali']); // $name='Ali'", cat:"🛡 Қосымша", keywords:["extract","массив","айнымалы","жасау"] },
+    { code:"sort() / rsort()", answer:"Массивті СҰРЫПТАУ (sort=өсу, rsort=кему)", example:"sort($arr); // [1,2,3]", cat:"🛡 Қосымша", keywords:["сұрыптау","sort","rsort","рет","тәртіп"] },
+    { code:"array_key_exists()", answer:"Массивте КІЛТ бар ма тексереді", example:"array_key_exists('name',$arr);", cat:"🛡 Қосымша", keywords:["кілт","бар","тексеру","key","exists"] },
+
+    // ===== 14. ФОРМА & HTML байланыс (6) =====
+    { code:"method=\"POST\"", answer:"Форма деректерін жасырын жіберу әдісі", example:"<form method='POST'>", cat:"📋 Форма", keywords:["post","форма","әдіс","method","жіберу"] },
+    { code:"method=\"GET\"", answer:"Форма деректерін URL арқылы жіберу әдісі", example:"<form method='GET'>", cat:"📋 Форма", keywords:["get","url","форма","әдіс","method"] },
+    { code:"action", answer:"Форма деректерін ҚАЙДА жіберу керек (URL)", example:"<form action='process.php'>", cat:"📋 Форма", keywords:["action","қайда","жіберу","url","бағыт"] },
+    { code:"name (атрибут)", answer:"Форма элементінің АТЫ — $_POST/$_GET кілті болады", example:"<input name='email'>", cat:"📋 Форма", keywords:["name","ат","кілт","атрибут","input"] },
+    { code:"$_FILES", answer:"Жүктелген файлдар туралы ақпарат массиві", example:"$_FILES['photo']['name']", cat:"📋 Форма", keywords:["файл","жүктеу","upload","files"] },
+    { code:"move_uploaded_file()", answer:"Жүктелген файлды тұрақты орынға КӨШІРУ", example:"move_uploaded_file($tmp, 'uploads/f.jpg');", cat:"📋 Форма", keywords:["файл","көшіру","жүктеу","upload","move"] }
+];
+
+// ===== STATE =====
+let cards = [...allCards];
+let currentIndex = 0;
+let correctCount = 0;
+let wrongCount = 0;
+let currentMode = 'flashcard';
+let answered = false;
+let currentCat = 'all';
+
+// Санаттар тізімі
+const categories = [...new Set(allCards.map(c => c.cat))];
+
+// Санат фильтрін құру
+function buildCatFilter() {
+    const container = document.getElementById('catFilter');
+    container.innerHTML = '<button class="cat-btn active" onclick="filterCat(\'all\')">🌐 Барлығы (' + allCards.length + ')</button>';
+    categories.forEach(cat => {
+        const count = allCards.filter(c => c.cat === cat).length;
+        const btn = document.createElement('button');
+        btn.className = 'cat-btn';
+        btn.textContent = cat + ' (' + count + ')';
+        btn.onclick = () => filterCat(cat);
+        container.appendChild(btn);
+    });
+}
+
+function filterCat(cat) {
+    currentCat = cat;
+    if (cat === 'all') {
+        cards = [...allCards];
+    } else {
+        cards = allCards.filter(c => c.cat === cat);
+    }
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('totalCards').textContent = cards.length;
+    document.getElementById('cardCountText').textContent = 'Таңдалған: ' + cards.length + ' карточка (барлығы ' + allCards.length + ')';
+    restart();
+}
+
+// ===== РЕЖИМ =====
+function setMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-btn').forEach((btn, i) => {
+        const modes = ['flashcard','quiz','type','table'];
+        btn.classList.toggle('active', modes[i] === mode);
+    });
+    ['flashcardMode','quizMode','typeMode','tableMode'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    document.getElementById('resultScreen').classList.add('hidden');
+
+    const hideForTable = mode === 'table';
+    document.getElementById('progressBar').classList.toggle('hidden', hideForTable);
+    document.getElementById('stats').classList.toggle('hidden', hideForTable);
+    document.getElementById('extraButtons').classList.toggle('hidden', hideForTable);
+
+    if (mode === 'table') { document.getElementById('tableMode').classList.remove('hidden'); buildTable(); }
+    else { document.getElementById(mode + 'Mode').classList.remove('hidden'); restart(); }
+}
+
+// ===== FLASHCARD =====
+function showCard() {
+    if (currentIndex >= cards.length) { showResult(); return; }
+    const c = cards[currentIndex];
+    document.getElementById('frontCode').innerHTML = c.code;
+    document.getElementById('frontCat').textContent = c.cat;
+    document.getElementById('backAnswer').textContent = c.answer;
+    document.getElementById('backExample').innerHTML = c.example;
+    document.getElementById('card').classList.remove('flipped');
+    updateProgress();
+}
+
+function flipCard() { document.getElementById('card').classList.toggle('flipped'); }
+
+function markCard(knew) {
+    if (knew) correctCount++; else wrongCount++;
+    currentIndex++;
+    updateStats();
+    if (currentIndex >= cards.length) { showResult(); return; }
+    showCard();
+}
+
+// ===== QUIZ =====
+function showQuiz() {
+    if (currentIndex >= cards.length) { showResult(); return; }
+    answered = false;
+    const c = cards[currentIndex];
+    document.getElementById('quizQuestion').innerHTML = c.code;
+    document.getElementById('quizCat').textContent = c.cat;
+    document.getElementById('quizFeedback').textContent = '';
+    document.getElementById('quizNextBtn').classList.add('hidden');
+
+    let options = [c.answer];
+    let others = allCards.filter(x => x.answer !== c.answer);
+    others.sort(() => Math.random() - 0.5);
+    for (let i = 0; i < 3 && i < others.length; i++) options.push(others[i].answer);
+    options.sort(() => Math.random() - 0.5);
+
+    const container = document.getElementById('quizOptions');
+    container.innerHTML = '';
+    options.forEach(opt => {
+        const div = document.createElement('div');
+        div.className = 'quiz-option';
+        div.textContent = opt;
+        div.onclick = () => checkQuiz(div, opt, c.answer);
+        container.appendChild(div);
+    });
+    updateProgress();
+}
+
+function checkQuiz(el, selected, correct) {
+    if (answered) return;
+    answered = true;
+    document.querySelectorAll('.quiz-option').forEach(o => {
+        if (o.textContent === correct) o.classList.add('correct');
+        if (o.textContent === selected && selected !== correct) o.classList.add('wrong');
+    });
+    if (selected === correct) {
+        correctCount++;
+        document.getElementById('quizFeedback').textContent = '✅ Дұрыс!';
+    } else {
+        wrongCount++;
+        document.getElementById('quizFeedback').textContent = '❌ Қате! Дұрысы: ' + correct;
+    }
+    updateStats();
+    document.getElementById('quizNextBtn').classList.remove('hidden');
+}
+
+function nextQuiz() { currentIndex++; showQuiz(); }
+
+// ===== TYPE =====
+function showType() {
+    if (currentIndex >= cards.length) { showResult(); return; }
+    answered = false;
+    const c = cards[currentIndex];
+    document.getElementById('typeQuestion').innerHTML = c.code;
+    document.getElementById('typeCat').textContent = c.cat;
+    document.getElementById('typeInput').value = '';
+    document.getElementById('typeFeedback').textContent = '';
+    document.getElementById('typeNextBtn').classList.add('hidden');
+    document.getElementById('typeInput').focus();
+    updateProgress();
+}
+
+function checkType() {
+    if (answered) return;
+    answered = true;
+    const c = cards[currentIndex];
+    const userAnswer = document.getElementById('typeInput').value.trim().toLowerCase();
+    let isCorrect = false;
+    for (const kw of c.keywords) {
+        if (userAnswer.includes(kw.toLowerCase())) { isCorrect = true; break; }
+    }
+    if (isCorrect) {
+        correctCount++;
+        document.getElementById('typeFeedback').innerHTML = '✅ Дұрыс! — ' + c.answer;
+    } else {
+        wrongCount++;
+        document.getElementById('typeFeedback').innerHTML = '❌ Жауабы: ' + c.answer;
+    }
+    updateStats();
+    document.getElementById('typeNextBtn').classList.remove('hidden');
+}
+
+function nextType() { currentIndex++; showType(); }
+
+// ===== TABLE =====
+function buildTable() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+    let lastCat = '';
+    let n = 0;
+    const list = currentCat === 'all' ? allCards : allCards.filter(c => c.cat === currentCat);
+    list.forEach(c => {
+        if (c.cat !== lastCat) {
+            lastCat = c.cat;
+            const tr = document.createElement('tr');
+            tr.className = 'cat-header';
+            tr.innerHTML = '<td colspan="5">' + c.cat + '</td>';
+            tbody.appendChild(tr);
+        }
+        n++;
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + n + '</td><td><code>' + c.code + '</code></td><td style="opacity:0.6;font-size:12px;">' + c.cat + '</td><td>' + c.answer + '</td><td><code>' + c.example + '</code></td>';
+        tbody.appendChild(tr);
+    });
+}
+
+// ===== UTILS =====
+function updateProgress() {
+    const total = cards.length;
+    const pct = Math.round((currentIndex / total) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressText').textContent = (currentIndex + 1) + ' / ' + total;
+}
+
+function updateStats() {
+    document.getElementById('correctCount').textContent = correctCount;
+    document.getElementById('wrongCount').textContent = wrongCount;
+    const total = correctCount + wrongCount;
+    document.getElementById('scorePercent').textContent = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+}
+
+function showResult() {
+    ['flashcardMode','quizMode','typeMode'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    document.getElementById('resultScreen').classList.remove('hidden');
+    const total = correctCount + wrongCount;
+    const pct = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    let emoji, title;
+    if (pct >= 90) { emoji='🏆'; title='Керемет!'; }
+    else if (pct >= 70) { emoji='🎉'; title='Жарайсың!'; }
+    else if (pct >= 50) { emoji='💪'; title='Жаман емес!'; }
+    else { emoji='📚'; title='Тағы жатта!'; }
+    document.getElementById('resultEmoji').textContent = emoji;
+    document.getElementById('resultTitle').textContent = title;
+    document.getElementById('resultText').textContent = 'Нәтиже: ' + correctCount + ' / ' + total + ' дұрыс (' + pct + '%)';
+    document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('progressText').textContent = 'Аяқталды!';
+}
+
+function restart() {
+    currentIndex = 0; correctCount = 0; wrongCount = 0; answered = false;
+    updateStats();
+    document.getElementById('resultScreen').classList.add('hidden');
+    if (currentMode === 'flashcard') { document.getElementById('flashcardMode').classList.remove('hidden'); showCard(); }
+    else if (currentMode === 'quiz') { document.getElementById('quizMode').classList.remove('hidden'); showQuiz(); }
+    else if (currentMode === 'type') { document.getElementById('typeMode').classList.remove('hidden'); showType(); }
+}
+
+function shuffleAndRestart() {
+    cards.sort(() => Math.random() - 0.5);
+    restart();
+}
+
+// INIT
+buildCatFilter();
+document.getElementById('totalCards').textContent = allCards.length;
+document.getElementById('cardCountText').textContent = 'Барлығы: ' + allCards.length + ' карточка';
+showCard();
+</script>
+
+</body>
+</html>
